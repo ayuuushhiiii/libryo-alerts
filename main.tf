@@ -13,7 +13,7 @@ module "log_filters" {
   for_each = toset(var.lambda_names)
 
   lambda_name      = each.key
-  filter_pattern   = "ERROR OR Exception OR INIT_REPORT OR \"Task timed out\""
+  filter_pattern   = "\"[ERROR]\" OR \"Exception\" OR \"INIT_REPORT\" OR \"Task timed out\""
   metric_name      = "ErrorCount"
   metric_namespace = "Lambda/LogMonitoring"
 }
