@@ -1,50 +1,47 @@
 # ------------------------------------------------------------------------------------ #
-# Description:
-#  GitHub Actions pipeline to provision AWS Infra resources for Lambda log alerts
-#  using Terraform.
-#  - Plan runs on PRs to releases/baseline
-#  - Apply runs on merge/push to releases/baseline
+# GitHub Actions pipeline to provision AWS infra for Lambda log alerts using Terraform
+# - Terraform Plan runs on PRs
+# - Terraform Apply runs on push to releases/baseline
 # ------------------------------------------------------------------------------------ #
 
 name: Deploy AWS Lambda Log Alerts using Terraform
 
 on:
-  push:
+  pull_request:
     branches:
       - releases/baseline
-  pull_request:
+  push:
     branches:
       - releases/baseline
 
 permissions:
-  id-token: write
   contents: read
-  deployments: write
 
 jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
 
     steps:
-      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Configure AWS credentials (decides AWS account)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Setup Terraform
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
 
-      # Terraform init (ROOT directory)
       - name: Terraform Init
         run: |
           terraform init \
@@ -53,15 +50,12 @@ jobs:
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="encrypt=true"
 
-      # Format Terraform code
-      - name: Terraform Fmt
+      - name: Terraform Format
         run: terraform fmt -recursive
 
-      # Terraform plan
       - name: Terraform Plan
         run: terraform plan -out=tfplan -var-file="terraform.tfvars"
 
-      # Upload plan artifact
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
@@ -71,28 +65,28 @@ jobs:
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     needs: terraform-plan
-    if: github.ref == 'refs/heads/releases/baseline'
 
     steps:
-      # Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Setup Terraform
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
 
-      # Terraform init
       - name: Terraform Init
         run: |
           terraform init \
@@ -101,12 +95,10 @@ jobs:
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="encrypt=true"
 
-      # Download plan artifact
       - name: Download Terraform Plan
         uses: actions/download-artifact@v4
         with:
           name: tfplan
 
-      # Terraform apply
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
