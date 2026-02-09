@@ -40,7 +40,7 @@ jobs:
           terraform_version: 1.8.5
 
       - name: Terraform Init
-        working-directory: ./libryo-lambda-alerts
+        working-directory: libryo-lambda-alerts
         run: |
           terraform init \
             -backend-config="bucket=${{ secrets.TF_BACKEND_BUCKET }}" \
@@ -49,18 +49,18 @@ jobs:
             -backend-config="encrypt=true"
 
       - name: Terraform Fmt
-        working-directory: ./libryo-lambda-alerts
+        working-directory: libryo-lambda-alerts
         run: terraform fmt -recursive
 
       - name: Terraform Plan
-        working-directory: ./libryo-lambda-alerts
+        working-directory: libryo-lambda-alerts
         run: terraform plan -out=tfplan -var-file="terraform.tfvars"
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
-          path: ./libryo-lambda-alerts/tfplan
+          path: libryo-lambda-alerts/tfplan
 
   terraform-apply:
     name: Terraform Apply
@@ -86,7 +86,7 @@ jobs:
           terraform_version: 1.8.5
 
       - name: Terraform Init
-        working-directory: ./libryo-lambda-alerts
+        working-directory: libryo-lambda-alerts
         run: |
           terraform init \
             -backend-config="bucket=${{ secrets.TF_BACKEND_BUCKET }}" \
@@ -98,8 +98,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tfplan
-          path: ./libryo-lambda-alerts
+          path: libryo-lambda-alerts
 
       - name: Terraform Apply
-        working-directory: ./libryo-lambda-alerts
+        working-directory: libryo-lambda-alerts
         run: terraform apply -auto-approve tfplan
